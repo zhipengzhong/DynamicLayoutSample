@@ -8,7 +8,16 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginLeft="10dp"
-        android:background="@android:color/white"
+        android:background="@drawable/child_background"
+        android:padding="8dp"
         android:text="Hello World!"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="10dp"
+        android:background="@drawable/child_background"
+        android:padding="8dp"
+        android:text="Young"/>
 
 </com.young.dynamiclayoutsample.widget.DynamicLayout>

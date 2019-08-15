@@ -2,16 +2,31 @@ package com.young.dynamiclayoutsample.widget;
 
 import android.content.Context;
 import android.content.res.TypedArray;
+import android.graphics.Rect;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.util.AttributeSet;
+import android.util.Log;
+import android.util.TypedValue;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 
 import com.young.dynamiclayoutsample.R;
 
 public class DynamicLayout extends ViewGroup {
+
+    private static final String TAG = "DynamicLayout";
+    /**
+     * 选中条目添加的Z轴高度
+     */
+    private final float mTranslationZ = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 5, getResources().getDisplayMetrics());
+    ;
+
     private boolean mChildrenRemovable;
+    private View mSelectedChild;
+    private float mTouchOffsetX;
+    private float mTouchOffsetY;
 
     public DynamicLayout(Context context) {
         super(context);
@@ -132,6 +147,97 @@ public class DynamicLayout extends ViewGroup {
                 child.layout(childLeft, childTop, childLeft + width, childTop + height);
             }
         }
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        return super.dispatchTouchEvent(ev);
+    }
+
+    @Override
+    public boolean onInterceptTouchEvent(MotionEvent ev) {
+//        return super.onInterceptTouchEvent(ev);
+        return true;
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        Log.d(TAG, "onTouchEvent: " + event.getAction());
+
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                handleTouchDown(event);
+                break;
+            case MotionEvent.ACTION_MOVE:
+                handleTouchMove(event);
+                break;
+        }
+
+        return true;
+    }
+
+    private void handleTouchMove(MotionEvent event) {
+        if (mSelectedChild == null) {
+            return;
+        }
+
+        float x = event.getX();
+        float y = event.getY();
+
+        MarginLayoutParams lp = (MarginLayoutParams) mSelectedChild.getLayoutParams();
+
+        int childX = (int) (x - mTouchOffsetX);
+        if (childX < 0) {
+            lp.leftMargin = 0;
+        } else {
+            int maxX = getMeasuredWidth() - mSelectedChild.getMeasuredWidth();
+            lp.leftMargin = childX > maxX ? maxX : childX;
+        }
+
+        int childY = (int) (y - mTouchOffsetY);
+        if (childY < 0) {
+            lp.topMargin = 0;
+        } else {
+            int maxY = getMeasuredHeight() - mSelectedChild.getMeasuredHeight();
+            lp.topMargin = childY > maxY ? maxY : childY;
+        }
+
+        requestLayout();
+    }
+
+    private void handleTouchDown(MotionEvent event) {
+        float x = event.getX();
+        float y = event.getY();
+
+        setViewTranslationZ(0);
+        mSelectedChild = null;
+        int count = getChildCount();
+        for (int i = count - 1; i >= 0; i--) {
+            View child = getChildAt(i);
+            Rect rect = getChildRect(child);
+            if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+                mSelectedChild = child;
+                setViewTranslationZ(mTranslationZ);
+                mTouchOffsetX = x - rect.left;
+                mTouchOffsetY = y - rect.top;
+                break;
+            }
+        }
+    }
+
+    private void setViewTranslationZ(float translationZ) {
+        if (mSelectedChild != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                mSelectedChild.setTranslationZ(translationZ);
+            } else {
+
+            }
+        }
+    }
+
+    private Rect getChildRect(View child) {
+        MarginLayoutParams lp = (MarginLayoutParams) child.getLayoutParams();
+        return new Rect(lp.leftMargin, lp.topMargin, lp.leftMargin + child.getMeasuredWidth(), lp.topMargin + child.getMeasuredHeight());
     }
 
     public void setChildrenRemovable(boolean childrenRemovable) {
