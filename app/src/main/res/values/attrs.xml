@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <declare-styleable name="DynamicLayout">
+        <attr name="childrenRemovable" format="boolean"/>
+    </declare-styleable>
+
+    <declare-styleable name="DynamicLayout_Layout">
+        <attr name="layout_drawSort" format="integer"/>
+    </declare-styleable>
+</resources>
