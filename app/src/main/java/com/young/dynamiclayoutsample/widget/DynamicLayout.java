@@ -227,12 +227,20 @@ public class DynamicLayout extends ViewGroup {
             Rect rect = getChildRect(child);
             if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
                 mSelectedChild = child;
+                if (mChildrenAutoSort) {
+                    resetChildrenDrawLast(mSelectedChild);
+                }
                 setViewTranslationZ(mTranslationZ);
                 mTouchOffsetX = x - rect.left;
                 mTouchOffsetY = y - rect.top;
                 break;
             }
         }
+    }
+
+    private void resetChildrenDrawLast(View child) {
+        LayoutParams params = (LayoutParams) child.getLayoutParams();
+        params.drawSort = Integer.MAX_VALUE;
     }
 
     private void childrenSort() {
@@ -254,6 +262,13 @@ public class DynamicLayout extends ViewGroup {
             }
             if (!isSort) {
                 mChildrenSort.add(child);
+            }
+        }
+        if (mChildrenAutoSort) {
+            for (int i = 0; i < mChildrenSort.size(); i++) {
+                View view = mChildrenSort.get(i);
+                LayoutParams params = (LayoutParams) view.getLayoutParams();
+                params.drawSort = i;
             }
         }
     }
