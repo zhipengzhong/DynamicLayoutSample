@@ -223,7 +223,7 @@ public class DynamicLayout extends ViewGroup {
         mSelectedChild = null;
         int count = getChildCount();
         for (int i = count - 1; i >= 0; i--) {
-            View child = getChildAt(i);
+            View child = getChildAt(getChildDrawingOrder(count, i));
             Rect rect = getChildRect(child);
             if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
                 mSelectedChild = child;
@@ -247,7 +247,7 @@ public class DynamicLayout extends ViewGroup {
         mChildrenSort = new ArrayList<>();
         int count = getChildCount();
         for (int i = 0; i < count; i++) {
-            View child = getChildAt(i);
+            View child = getChildAt(getChildDrawingOrder(count, i));
             LayoutParams layoutParams = (LayoutParams) child.getLayoutParams();
             int sort = layoutParams.drawSort;
             boolean isSort = false;
