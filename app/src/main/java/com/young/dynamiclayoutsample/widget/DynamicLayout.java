@@ -14,6 +14,8 @@ import android.view.ViewGroup;
 
 import com.young.dynamiclayoutsample.R;
 
+import java.util.ArrayList;
+
 public class DynamicLayout extends ViewGroup {
 
     private static final String TAG = "DynamicLayout";
@@ -21,12 +23,13 @@ public class DynamicLayout extends ViewGroup {
      * 选中条目添加的Z轴高度
      */
     private final float mTranslationZ = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 5, getResources().getDisplayMetrics());
-    ;
 
     private boolean mChildrenRemovable;
     private View mSelectedChild;
     private float mTouchOffsetX;
     private float mTouchOffsetY;
+    private boolean mChildrenAutoSort;
+    private ArrayList<View> mChildrenSort;
 
     public DynamicLayout(Context context) {
         super(context);
@@ -40,12 +43,7 @@ public class DynamicLayout extends ViewGroup {
         super(context, attrs, defStyleAttr);
         final TypedArray typed = context.obtainStyledAttributes(
                 attrs, R.styleable.DynamicLayout);
-
-        if (typed.getBoolean(R.styleable.DynamicLayout_childrenRemovable, false)) {
-            setChildrenRemovable(true);
-        }
-
-        typed.recycle();
+        initTypedArray(typed);
     }
 
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
@@ -53,11 +51,15 @@ public class DynamicLayout extends ViewGroup {
         super(context, attrs, defStyleAttr, defStyleRes);
         final TypedArray typed = context.obtainStyledAttributes(
                 attrs, R.styleable.DynamicLayout, defStyleAttr, defStyleRes);
+        initTypedArray(typed);
+    }
 
+    private void initTypedArray(TypedArray typed) {
         if (typed.getBoolean(R.styleable.DynamicLayout_childrenRemovable, false)) {
             setChildrenRemovable(true);
         }
-
+        mChildrenAutoSort = typed.getBoolean(R.styleable.DynamicLayout_childrenAutoSort, false);
+        setChildrenDrawingOrderEnabled(true);
         typed.recycle();
     }
 
@@ -81,9 +83,9 @@ public class DynamicLayout extends ViewGroup {
         return new LayoutParams(p);
     }
 
-
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        childrenSort();
 
         int maxWidth = 0;
         int maxHeight = 0;
@@ -147,6 +149,14 @@ public class DynamicLayout extends ViewGroup {
                 child.layout(childLeft, childTop, childLeft + width, childTop + height);
             }
         }
+    }
+
+    @Override
+    protected int getChildDrawingOrder(int childCount, int i) {
+        if (mChildrenSort != null && mChildrenSort.size() == childCount) {
+            return indexOfChild(mChildrenSort.get(i));
+        }
+        return super.getChildDrawingOrder(childCount, i);
     }
 
     @Override
@@ -225,6 +235,29 @@ public class DynamicLayout extends ViewGroup {
         }
     }
 
+    private void childrenSort() {
+        mChildrenSort = new ArrayList<>();
+        int count = getChildCount();
+        for (int i = 0; i < count; i++) {
+            View child = getChildAt(i);
+            LayoutParams layoutParams = (LayoutParams) child.getLayoutParams();
+            int sort = layoutParams.drawSort;
+            boolean isSort = false;
+            for (int j = 0; j < mChildrenSort.size(); j++) {
+                View view = mChildrenSort.get(j);
+                LayoutParams lp = (LayoutParams) view.getLayoutParams();
+                if (lp.drawSort > sort) {
+                    mChildrenSort.add(j, child);
+                    isSort = true;
+                    break;
+                }
+            }
+            if (!isSort) {
+                mChildrenSort.add(child);
+            }
+        }
+    }
+
     private void setViewTranslationZ(float translationZ) {
         if (mSelectedChild != null) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -250,8 +283,6 @@ public class DynamicLayout extends ViewGroup {
 
 
     public static class LayoutParams extends MarginLayoutParams {
-
-        public static final int UNSPECIFIED_GRAVITY = -1;
 
         public int drawSort;
 

@@ -3,6 +3,7 @@
 
     <declare-styleable name="DynamicLayout">
         <attr name="childrenRemovable" format="boolean"/>
+        <attr name="childrenAutoSort" format="boolean"/>
     </declare-styleable>
 
     <declare-styleable name="DynamicLayout_Layout">
