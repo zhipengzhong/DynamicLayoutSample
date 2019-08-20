@@ -2,6 +2,7 @@ package com.young.dynamiclayoutsample.widget;
 
 import android.content.Context;
 import android.content.res.TypedArray;
+import android.graphics.PointF;
 import android.graphics.Rect;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
@@ -26,10 +27,15 @@ public class DynamicLayout extends ViewGroup {
 
     private boolean mChildrenRemovable;
     private View mSelectedChild;
-    private float mTouchOffsetX;
-    private float mTouchOffsetY;
+    private PointF mTouchOffset1;
+    private PointF mTouchOffset2;
+    private PointF mTouchPointer1;
+    private PointF mTouchPointer2;
     private boolean mChildrenAutoSort;
     private ArrayList<View> mChildrenSort;
+    private Rect mScaleBefore;
+    private PointF mPointerScaleBefore1;
+    private PointF mPointerScaleBefore2;
 
     public DynamicLayout(Context context) {
         super(context);
@@ -172,17 +178,32 @@ public class DynamicLayout extends ViewGroup {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        Log.d(TAG, "onTouchEvent: " + event.getAction());
+//        Log.d(TAG, "onTouchEvent: " + event.getAction());
 
-        switch (event.getAction()) {
+        int pointerId = event.getPointerId(event.getActionIndex());
+        switch (event.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
-                handleTouchDown(event);
+                handleTouchFirstDown(event, pointerId);
+                break;
+            case MotionEvent.ACTION_UP:
+                mTouchPointer1 = null;
+                mTouchPointer2 = null;
+                break;
+            case MotionEvent.ACTION_POINTER_DOWN:
+                handleTouchDown(event, pointerId);
+                break;
+            case MotionEvent.ACTION_POINTER_UP:
+                handleTouchUp(pointerId);
+                break;
+            case MotionEvent.ACTION_CANCEL:
+                handleTouchUp(pointerId);
                 break;
             case MotionEvent.ACTION_MOVE:
                 handleTouchMove(event);
                 break;
         }
 
+        requestLayout();
         return true;
     }
 
@@ -191,36 +212,98 @@ public class DynamicLayout extends ViewGroup {
             return;
         }
 
-        float x = event.getX();
-        float y = event.getY();
-
         MarginLayoutParams lp = (MarginLayoutParams) mSelectedChild.getLayoutParams();
 
-        int childX = (int) (x - mTouchOffsetX);
-        if (childX < 0) {
-            lp.leftMargin = 0;
-        } else {
-            int maxX = getMeasuredWidth() - mSelectedChild.getMeasuredWidth();
-            lp.leftMargin = childX > maxX ? maxX : childX;
+        int pointerId;
+        int count = event.getPointerCount();
+        for (int i = 0; i < (count < 2 ? count : 2); i++) {
+            pointerId = event.getPointerId(i);
+            switch (pointerId) {
+                case 0:
+                    if (mTouchPointer1 != null) {
+                        mTouchPointer1.set(event.getX(i), event.getY(i));
+                    }
+                    break;
+                case 1:
+                    if (mTouchPointer2 != null) {
+                        mTouchPointer2.set(event.getX(i), event.getY(i));
+                    }
+                    break;
+            }
         }
 
-        int childY = (int) (y - mTouchOffsetY);
-        if (childY < 0) {
-            lp.topMargin = 0;
-        } else {
-            int maxY = getMeasuredHeight() - mSelectedChild.getMeasuredHeight();
-            lp.topMargin = childY > maxY ? maxY : childY;
+        if ((mTouchPointer1 != null && mTouchPointer2 == null)) {
+            int childX = (int) (mTouchPointer1.x - mTouchOffset1.x);
+            if (childX < 0) {
+                lp.leftMargin = 0;
+            } else {
+                int maxX = getMeasuredWidth() - mSelectedChild.getMeasuredWidth();
+                lp.leftMargin = childX > maxX ? maxX : childX;
+            }
+
+            int childY = (int) (mTouchPointer1.y - mTouchOffset1.y);
+            if (childY < 0) {
+                lp.topMargin = 0;
+            } else {
+                int maxY = getMeasuredHeight() - mSelectedChild.getMeasuredHeight();
+                lp.topMargin = childY > maxY ? maxY : childY;
+            }
+        } else if (mTouchPointer1 == null && mTouchPointer2 != null) {
+            int childX = (int) (mTouchPointer2.x - mTouchOffset2.x);
+            if (childX < 0) {
+                lp.leftMargin = 0;
+            } else {
+                int maxX = getMeasuredWidth() - mSelectedChild.getMeasuredWidth();
+                lp.leftMargin = childX > maxX ? maxX : childX;
+            }
+
+            int childY = (int) (mTouchPointer2.y - mTouchOffset2.y);
+            if (childY < 0) {
+                lp.topMargin = 0;
+            } else {
+                int maxY = getMeasuredHeight() - mSelectedChild.getMeasuredHeight();
+                lp.topMargin = childY > maxY ? maxY : childY;
+            }
+        } else if (mTouchPointer1 != null && mTouchPointer2 != null) {
+//            int viewWidth = mScaleBefore.right - mScaleBefore.left;
+//            int viewHeight = mScaleBefore.bottom - mScaleBefore.top;
+            lp.width = (int) (mScaleBefore.right - mPointerScaleBefore2.x + mTouchPointer2.x - lp.leftMargin);
+            lp.height = (int) (mScaleBefore.bottom - mPointerScaleBefore2.y + mTouchPointer2.y - lp.topMargin);
+
+            Log.d(TAG, "handleTouchMove: " + mScaleBefore.right);
+            Log.d(TAG, "handleTouchMove: " + mPointerScaleBefore2.x);
+            Log.d(TAG, "handleTouchMove: " + mTouchPointer2.x);
+            Log.d(TAG, "handleTouchMove: " + lp.leftMargin);
+            Log.d(TAG, "handleTouchMove: " + lp.width);
+
         }
 
-        requestLayout();
+
     }
 
-    private void handleTouchDown(MotionEvent event) {
-        float x = event.getX();
-        float y = event.getY();
+    private void handleTouchUp(int pointerId) {
+        switch (pointerId) {
+            case 0:
+                mTouchPointer1 = null;
+                break;
+            case 1:
+                mTouchPointer2 = null;
+                break;
+        }
+    }
+
+    private void handleTouchFirstDown(MotionEvent event, int pointerId) {
+        if (pointerId != 0 && pointerId != 1) {
+            return;
+        }
 
         setViewTranslationZ(0);
         mSelectedChild = null;
+
+        int pointerIndex = event.findPointerIndex(pointerId);
+        float x = event.getX(pointerIndex);
+        float y = event.getY(pointerIndex);
+
         int count = getChildCount();
         for (int i = count - 1; i >= 0; i--) {
             View child = getChildAt(getChildDrawingOrder(count, i));
@@ -231,8 +314,50 @@ public class DynamicLayout extends ViewGroup {
                     resetChildrenDrawLast(mSelectedChild);
                 }
                 setViewTranslationZ(mTranslationZ);
-                mTouchOffsetX = x - rect.left;
-                mTouchOffsetY = y - rect.top;
+                switch (pointerId) {
+                    case 0:
+                        mTouchPointer1 = new PointF(x, y);
+                        mTouchOffset1 = new PointF(x - rect.left, y - rect.top);
+                        break;
+                    case 1:
+                        mTouchPointer2 = new PointF(x, y);
+                        mTouchOffset2 = new PointF(x - rect.left, y - rect.top);
+                        break;
+                }
+                break;
+            }
+        }
+    }
+
+    private void handleTouchDown(MotionEvent event, int pointerId) {
+        if (pointerId != 0 && pointerId != 1) {
+            return;
+        }
+
+        int pointerIndex = event.findPointerIndex(pointerId);
+        float x = event.getX(pointerIndex);
+        float y = event.getY(pointerIndex);
+
+        int count = getChildCount();
+        for (int i = count - 1; i >= 0; i--) {
+            View child = getChildAt(getChildDrawingOrder(count, i));
+            Rect rect = getChildRect(child);
+            if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+                if (mSelectedChild == child) {
+                    switch (pointerId) {
+                        case 0:
+                            mTouchPointer1 = new PointF(x, y);
+                            mTouchOffset1 = new PointF(x - rect.left, y - rect.top);
+                            break;
+                        case 1:
+                            mTouchPointer2 = new PointF(x, y);
+                            mTouchOffset2 = new PointF(x - rect.left, y - rect.top);
+                            break;
+                    }
+                }
+                mScaleBefore = rect;
+                mPointerScaleBefore1 = new PointF(mTouchPointer1.x, mTouchPointer1.y);
+                mPointerScaleBefore2 = new PointF(mTouchPointer2.x, mTouchPointer2.y);
                 break;
             }
         }
